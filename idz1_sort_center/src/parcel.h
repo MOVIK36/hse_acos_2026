@@ -21,7 +21,8 @@ typedef enum {
     STAGE_SORTING = 4,           // На сортировочном посту
     STAGE_CONVEYOR = 5,          // Едет по конвейеру
     STAGE_OUTPUT_BIN = 6,        // В выходном накопителе (успех)
-    STAGE_MANUAL_INSPECTION = 7  // В ручной обработке (отбраковка)
+    STAGE_MANUAL_INSPECTION = 7, // В ручной обработке (отбраковка)
+    STAGE_RESCAN_BUFFER = 8     // Ожидание повторного сканирования
 } parcel_stage_t;
 
 typedef struct {

@@ -14,12 +14,15 @@ typedef struct {
     uint32_t num_sorters;              // Число сортировщиков
     
     uint32_t conveyor_length;          // Длина конвейера
-    uint32_t conveyor_transit_ticks;   // Время проезда по конвейеру
+    uint32_t conveyor_speed;           // Ячеек за такт (1..длина конвейера)
     
     uint32_t input_buffer_cap;         // Вместимость входного буфера
     uint32_t intermediate_buffer_cap;  // Вместимость буфера перед сортировкой
     uint32_t output_bin_cap;           // Вместимость накопителя выхода
     uint32_t manual_buffer_cap;        // Вместимость зоны брака
+    uint32_t rescan_buffer_cap;        // Вместимость очереди повторного сканирования
+    uint32_t output_dispatch_interval; // Отгрузка выходных накопителей, такты
+    uint32_t manual_service_interval;  // Освобождение ручной зоны, такты
     
     uint32_t arrival_interval_min;     // Мин. интервал между посылками
     uint32_t arrival_interval_max;     // Макс. интервал между посылками
@@ -39,6 +42,7 @@ typedef struct {
 } sim_config_t;
 
 void config_set_defaults(sim_config_t *cfg);
+int config_validate(const sim_config_t *cfg);
 int config_parse_args(sim_config_t *cfg, int argc, char *argv[]);
 int config_load_file(sim_config_t *cfg, const char *filepath);
 void config_print(const sim_config_t *cfg, int out_fd);

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <signal.h>
 #include "center.h"
 
 // Статусы завершения симуляции
@@ -11,13 +12,15 @@ typedef enum {
     SIM_STATUS_RUNNING = 0,
     SIM_STATUS_COMPLETED = 1,
     SIM_STATUS_INTERRUPTED = 2,
-    SIM_STATUS_INVARIANT_ERROR = 3
+    SIM_STATUS_INVARIANT_ERROR = 3,
+    SIM_STATUS_RESOURCE_ERROR = 4
 } sim_status_t;
 
 typedef struct {
     sort_center_t center;
     sim_status_t status;
     bool stop_requested;
+    const volatile sig_atomic_t *signal_flag;
 } event_simulation_t;
 
 int sim_init(event_simulation_t *sim, const sim_config_t *cfg);

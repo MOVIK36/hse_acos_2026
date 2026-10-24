@@ -16,18 +16,17 @@ static volatile sig_atomic_t g_sigint_received = 0;
 static void sigint_handler(int signo) {
     (void)signo;
     g_sigint_received = 1;
-    sim_request_stop(&g_sim);
 }
 
-static void setup_signal_handlers(void) {
+static int setup_signal_handlers(void) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = sigint_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     
-    sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGTERM, &sa, NULL);
+    if (sigaction(SIGINT, &sa, NULL) != 0 || sigaction(SIGTERM, &sa, NULL) != 0) return -1;
+    return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -60,7 +59,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    setup_signal_handlers();
+    g_sim.signal_flag = &g_sigint_received;
+    if (setup_signal_handlers() != 0) {
+        dprintf(STDERR_FILENO, "[ERROR] Не удалось установить обработчики сигналов.\n");
+        sim_cleanup(&g_sim);
+        logger_close();
+        return 1;
+    }
     sim_run(&g_sim);
 
     // Печать итогового отчета
@@ -72,5 +77,5 @@ int main(int argc, char *argv[]) {
     sim_cleanup(&g_sim);
     logger_close();
 
-    return (g_sim.status == SIM_STATUS_INVARIANT_ERROR) ? 1 : 0;
+    return (g_sim.status == SIM_STATUS_INVARIANT_ERROR || g_sim.status == SIM_STATUS_RESOURCE_ERROR) ? 1 : 0;
 }

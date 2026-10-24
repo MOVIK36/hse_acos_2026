@@ -22,6 +22,8 @@ typedef struct {
 typedef struct {
     uint32_t id;
     bool is_busy;
+    bool result_ready; // Результат чтения фиксируется один раз до передачи посылки
+    uint32_t next_input_line;
     parcel_t current_parcel;
     uint32_t remaining_ticks;
     uint32_t total_scanned;
@@ -72,8 +74,10 @@ typedef struct {
     uint32_t total_arrived;
     uint32_t total_delivered;
     uint32_t total_manual_rejected;
-    uint32_t total_rescans_performed;
-    uint32_t total_stalls_experienced;
+    uint64_t total_rescans_performed;
+    uint64_t total_stalls_experienced;
+    uint32_t total_shipped;
+    uint32_t total_manual_serviced;
     uint64_t sum_transit_time_ticks;
     
     // Расписание прихода новых посылок

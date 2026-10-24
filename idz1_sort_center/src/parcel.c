@@ -10,6 +10,7 @@ const char *parcel_stage_to_string(parcel_stage_t stage) {
         case STAGE_CONVEYOR:          return "CONVEYOR";
         case STAGE_OUTPUT_BIN:        return "OUTPUT_BIN";
         case STAGE_MANUAL_INSPECTION: return "MANUAL_REJECT";
+        case STAGE_RESCAN_BUFFER:     return "RESCAN_BUF";
         default:                      return "UNKNOWN";
     }
 }
