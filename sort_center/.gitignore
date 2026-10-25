@@ -1,0 +1,6 @@
+/sort_center
+/build/
+/cmake-build-*/
+/sort_center.log
+/.idea/
+*:Zone.Identifier
