@@ -13,7 +13,7 @@ HEADERS = $(wildcard $(SRC_DIR)/*.h)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -pthread -o $@ $^
+	$(CC) $(CFLAGS) -pthread -o $@ $^ -lrt
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -pthread -c $< -o $@
@@ -28,4 +28,4 @@ run: $(TARGET)
 	./$(TARGET) -n 20 --delay 20
 
 test: $(TARGET)
-	bash scripts/run_tests.sh "$(abspath $(TARGET))"
+	timeout -k 5 90 bash scripts/run_tests.sh "$(abspath $(TARGET))"

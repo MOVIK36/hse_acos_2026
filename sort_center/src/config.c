@@ -18,7 +18,7 @@ void config_set_defaults(sim_config_t *cfg) {
         .arrival_interval_min = 1, .arrival_interval_max = 3,
         .scan_duration = 2, .sort_duration = 1, .label_error_prob_pct = 20,
         .max_rescan_attempts = 2, .step_delay_ms = 25, .random_seed = 42,
-        .verbose_stdout = true, .log_filepath = "sort_center.log"
+        .ipc_mode = "unnamed", .verbose_stdout = true, .log_filepath = "sort_center.log"
     };
 }
 
@@ -33,6 +33,18 @@ static int parse_uint(const char *text, uint32_t *value) {
 }
 
 static int set_parameter(sim_config_t *cfg, const char *name, const char *text) {
+    if (strcmp(name, "ipc_mode") == 0) {
+        if (strcmp(text, "unnamed") && strcmp(text, "named") && strcmp(text, "independent")) goto invalid;
+        strcpy(cfg->ipc_mode, text);
+        return 0;
+    }
+    if (strcmp(name, "session") == 0) {
+        if (!*text || strlen(text) >= sizeof(cfg->session)) goto invalid;
+        for (const char *p = text; *p; ++p)
+            if (!isalnum((unsigned char)*p) && *p != '_') goto invalid;
+        strcpy(cfg->session, text);
+        return 0;
+    }
     if (strcmp(name, "log_filepath") == 0) {
         if (!*text || strlen(text) >= sizeof(cfg->log_filepath)) goto invalid;
         strcpy(cfg->log_filepath, text);
@@ -145,6 +157,8 @@ int config_parse_args(sim_config_t *cfg, int argc, char *argv[]) {
         {"conveyor-speed", required_argument, NULL, 1001},
         {"output-interval", required_argument, NULL, 1002},
         {"manual-interval", required_argument, NULL, 1003},
+        {"mode", required_argument, NULL, 1004},
+        {"session", required_argument, NULL, 1005},
         {NULL, 0, NULL, 0}
     };
     const char *short_options = "n:d:l:s:o:e:r:S:D:c:L:uqh";
@@ -156,6 +170,8 @@ int config_parse_args(sim_config_t *cfg, int argc, char *argv[]) {
         if (option == 'h') {
             dprintf(STDOUT_FILENO,
                 "Использование: %s [параметры]\n"
+                "Участник: ./sort_center --worker SESSION ROLE INDEX (индекс с 0)\n"
+                "Роли: source, scanner, sorter, conveyor, service\n"
                 "  -n, --parcels N         Число посылок (0 — пустой запуск)\n"
                 "  -d, --destinations N    Число направлений\n"
                 "  -l, --lines N           Число входных линий\n"
@@ -173,6 +189,8 @@ int config_parse_args(sim_config_t *cfg, int argc, char *argv[]) {
                 "      --conveyor-speed N  Скорость, ячеек/такт, 1..длина\n"
                 "      --output-interval N Интервал отгрузки выходных накопителей\n"
                 "      --manual-interval N Интервал освобождения ручной зоны\n"
+                "      --mode MODE         unnamed, named или independent\n"
+                "      --session NAME      Имя модели (буквы, цифры, _)\n"
                 "  -h, --help              Справка\n"
                 "CLI имеет приоритет над файлами. Остальные параметры задаются в .conf.\n", argv[0]);
             return 1;
@@ -202,6 +220,8 @@ int config_parse_args(sim_config_t *cfg, int argc, char *argv[]) {
             case 1001: key = "conveyor_speed"; break;
             case 1002: key = "output_dispatch_interval"; break;
             case 1003: key = "manual_service_interval"; break;
+            case 1004: key = "ipc_mode"; break;
+            case 1005: key = "session"; break;
             case 'u': cfg->unlimited_mode = true; break;
             case 'q': cfg->verbose_stdout = false; break;
             case 'c': break;
@@ -217,7 +237,8 @@ int config_parse_args(sim_config_t *cfg, int argc, char *argv[]) {
 }
 
 void config_print(const sim_config_t *c, int fd) {
-    dprintf(fd, "=== ИЗ-2, вариант 34: Сортировочный центр ===\n");
+    dprintf(fd, "=== ИЗ-3, вариант 34: Сортировочный центр ===\n");
+    dprintf(fd, "Режим: %s; сессия: %s\n", c->ipc_mode, c->session);
     dprintf(fd, "Посылок: %u; направлений: %u; входных линий: %u\n",
             c->num_parcels, c->num_destinations, c->num_input_lines);
     dprintf(fd, "Сканеров: %u; сортировщиков: %u; время обработки: %u / %u тактов\n",

@@ -2,6 +2,7 @@
 #define IO_LOGGER_H
 
 #include <stdint.h>
+#include <semaphore.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <unistd.h>
@@ -9,6 +10,8 @@
 // Логгер с прямым выводом через дескрипторы файлов
 int logger_init(const char *log_filepath, bool verbose_stdout);
 void logger_close(void);
+int logger_attach(const char *path, bool verbose_stdout);
+void logger_set_semaphore(sem_t *sem);
 
 int logger_get_log_fd(void);
 
