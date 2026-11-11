@@ -36,6 +36,8 @@ typedef struct {
     uint32_t random_seed;              // Начальное значение генераторов
     bool unlimited_mode;               // Бесконечный режим (до Ctrl+C)
 
+    char ipc_mode[16];                // unnamed, named, independent
+    char session[48];                 // Имя экземпляра общей памяти
     char log_filepath[256];            // Путь к файлу лога
     bool verbose_stdout;               // Печать событий в консоль
 } sim_config_t;
