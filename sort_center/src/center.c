@@ -29,6 +29,20 @@ void center_unlock(sort_center_t *c) {
     sem_post(ipc_sem(&c->mutex));
 }
 
+uint32_t request_parcel(sort_center_t *c, unsigned line, unsigned destination, uint32_t now) {
+    for (unsigned slot = 0; slot < MAX_PARCELS; ++slot) {
+        parcel_job_t *p = &c->parcels[slot];
+        if (p->state) continue;
+        p->data = (parcel_t){.id = ++c->total_arrived, .source_line = line,
+            .target_destination = destination, .arrival_tick = now};
+        p->state = 1;
+        log_event(now, "PARCEL_ARRIVAL", "Посылка #%03u: линия %u, направление %u, запрос на создание процесса",
+                  p->data.id, line + 1, destination + 1);
+        return p->data.id;
+    }
+    return 0;
+}
+
 static int init_sem(sort_center_t *c, ipc_sem_t *s, unsigned value) {
     s->index = c->sem_count;
     if (c->sem_count >= MAX_SEMAPHORES) return -1;

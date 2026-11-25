@@ -70,6 +70,8 @@ void center_close(sort_center_t *c, bool owner);
 sem_t *ipc_sem(ipc_sem_t *s);
 void center_lock(sort_center_t *c);
 void center_unlock(sort_center_t *c);
+// Вызывается под mutex после резервирования мест во входе и в массиве посылок.
+uint32_t request_parcel(sort_center_t *c, unsigned line, unsigned destination, uint32_t now);
 void fifo_push(fifo_queue_t *q, sort_center_t *c, parcel_job_t *p);
 parcel_job_t *fifo_pop(fifo_queue_t *q, sort_center_t *c);
 

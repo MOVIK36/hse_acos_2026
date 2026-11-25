@@ -2,6 +2,7 @@
 #include "process_sim.h"
 #include "center.h"
 #include "io_logger.h"
+#include "tcp_server.h"
 #include <errno.h>
 #include <signal.h>
 #include <inttypes.h>
@@ -153,21 +154,15 @@ static void source_process(worker_arg_t *a) {
             if (exhausted) fail(c, "Исчерпан диапазон идентификаторов");
             break;
         }
-        unsigned slot = 0;
-        while (slot < MAX_PARCELS && c->parcels[slot].state) ++slot;
-        if (slot == MAX_PARCELS) {
-            center_unlock(c);
+        unsigned destination = (uint32_t)rand_r(&seed) % c->cfg.num_destinations;
+        uint32_t id = request_parcel(c, a->index, destination, tick(c));
+        center_unlock(c);
+        if (!id) {
+            sem_post(ipc_sem(&q->free_slots));
+            sem_post(ipc_sem(&c->parcel_free));
             fail(c, "Нарушен баланс ячеек посылок");
             break;
         }
-        parcel_job_t *p = &c->parcels[slot];
-        p->data = (parcel_t){.id = ++c->total_arrived, .source_line = a->index,
-            .target_destination = (uint32_t)rand_r(&seed) % c->cfg.num_destinations,
-            .arrival_tick = tick(c)};
-        p->state = 1;
-        log_event(tick(c), "PARCEL_ARRIVAL", "Посылка #%03u: линия %u, направление %u, запрос на создание процесса",
-                  p->data.id, a->index + 1, p->data.target_destination + 1);
-        center_unlock(c);
     }
     return;
 }
@@ -488,14 +483,24 @@ int sim_run(const sim_config_t *cfg) {
         dprintf(STDERR_FILENO, "Не удалось создать IPC сессии %s: %s\n", cfg->session, strerror(errno));
         return 1;
     }
-    if (logger_init(cfg->log_filepath, cfg->verbose_stdout) != 0) {
+    tcp_server_t *server = NULL;
+    if (cfg->address[0]) {
+        server = tcp_server_open(cfg);
+        if (!server) {
+            dprintf(STDERR_FILENO, "Не удалось запустить TCP-сервер: %s\n", strerror(errno));
+            center_close(c, true);
+            return 1;
+        }
+    }
+    if (logger_init(cfg->log_filepath, cfg->verbose_stdout, server != NULL) != 0) {
+        tcp_server_close(server);
         center_close(c, true);
         return 1;
     }
     logger_set_semaphore(ipc_sem(&c->log_mutex));
     config_print(cfg, STDOUT_FILENO);
     config_print(cfg, logger_get_log_fd());
-    log_event(0, "SIM_START", "Сортировочный центр с процессами, режим %s", cfg->ipc_mode);
+    log_event(0, "SIM_START", "Сортировочный центр с процессами, режим %s", server ? "TCP" : cfg->ipc_mode);
     bool independent = strcmp(cfg->ipc_mode, "independent") == 0;
     pid_t workers[MAX_WORKERS] = {0}, parcels[MAX_PARCELS] = {0};
     uint32_t joined = 0;
@@ -503,10 +508,12 @@ int sim_run(const sim_config_t *cfg) {
     // Готовность публикуется только после создания всех семафоров и журнала.
     atomic_store(&c->ready, true);
     unsigned count = worker_count(cfg);
+    if (server) count -= cfg->num_input_lines;
     if (!independent && (cfg->unlimited_mode || cfg->num_parcels)) {
         for (unsigned i = 0; i < count && !stopped(c); ++i) {
             pid_t pid = fork();
             if (pid == 0) {
+                tcp_server_close(server);
                 if (!register_worker(c, i)) _exit(1);
                 worker_process(c, i);
                 logger_close();
@@ -524,6 +531,10 @@ int sim_run(const sim_config_t *cfg) {
         }
         children_finished(workers, count, c);
         workers_finished(c);
+        if (server && tcp_server_step(server, c, tick(c)) != 0) {
+            fail(c, "Ошибка работы TCP-сервера или отключение источника");
+            break;
+        }
         if (independent) {
             center_lock(c);
             unsigned registered = c->registered;
@@ -542,6 +553,7 @@ int sim_run(const sim_config_t *cfg) {
             if (requested) {
                 pid_t pid = fork();
                 if (pid == 0) {
+                    tcp_server_close(server);
                     // Общий семафор освободит родитель.
                     parcel_process(c, slot);
                     logger_close();
@@ -600,10 +612,15 @@ int sim_run(const sim_config_t *cfg) {
         (!interrupted && !c->failed && c->total_delivered + c->total_manual_rejected != c->total_arrived))
         fail(c, "Нарушен баланс посылок");
     log_event(tick(c), interrupted ? "SIM_INTERRUPT" : c->failed ? "SIM_ABORT" : "SIM_END",
+              "%s", server ? "Устройства и процессы посылок завершили работу" :
               "Дочерние процессы собраны через waitpid, независимые участники закончили работу");
     print_summary(c, STDOUT_FILENO, interrupted);
     print_summary(c, logger_get_log_fd(), interrupted);
     int result = c->failed ? 1 : 0;
+    if (server) {
+        tcp_server_finish(server, c->failed);
+        tcp_server_close(server);
+    }
     center_close(c, true);
     return result;
 }

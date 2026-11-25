@@ -170,6 +170,7 @@ int config_parse_args(sim_config_t *cfg, int argc, char *argv[]) {
         if (option == 'h') {
             dprintf(STDOUT_FILENO,
                 "Использование: %s [параметры]\n"
+                "Сервер: ./sort_center --server IP PORT [параметры]\n"
                 "Участник: ./sort_center --worker SESSION ROLE INDEX (индекс с 0)\n"
                 "Роли: source, scanner, sorter, conveyor, service\n"
                 "  -n, --parcels N         Число посылок (0 — пустой запуск)\n"
@@ -237,8 +238,9 @@ int config_parse_args(sim_config_t *cfg, int argc, char *argv[]) {
 }
 
 void config_print(const sim_config_t *c, int fd) {
-    dprintf(fd, "=== ИЗ-3, вариант 34: Сортировочный центр ===\n");
+    dprintf(fd, "=== ИЗ-%d, вариант 34: Сортировочный центр ===\n", c->address[0] ? 4 : 3);
     dprintf(fd, "Режим: %s; сессия: %s\n", c->ipc_mode, c->session);
+    if (c->address[0]) dprintf(fd, "TCP-сервер: %s:%s\n", c->address, c->port);
     dprintf(fd, "Посылок: %u; направлений: %u; входных линий: %u\n",
             c->num_parcels, c->num_destinations, c->num_input_lines);
     dprintf(fd, "Сканеров: %u; сортировщиков: %u; время обработки: %u / %u тактов\n",

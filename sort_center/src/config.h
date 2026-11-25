@@ -38,6 +38,8 @@ typedef struct {
 
     char ipc_mode[16];                // unnamed, named, independent
     char session[48];                 // Имя экземпляра общей памяти
+    char address[16];                 // IPv4-адрес сервера, пустой для локального запуска
+    char port[6];                     // TCP-порт
     char log_filepath[256];            // Путь к файлу лога
     bool verbose_stdout;               // Печать событий в консоль
 } sim_config_t;
