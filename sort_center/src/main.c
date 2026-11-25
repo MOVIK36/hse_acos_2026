@@ -2,6 +2,7 @@
 #include "config.h"
 #include "io_logger.h"
 #include "process_sim.h"
+#include "tcp.h"
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -13,8 +14,29 @@ int main(int argc, char *argv[]) {
         return run_worker(argv[2], argv[3], argv[4]);
     sim_config_t cfg;
     config_set_defaults(&cfg);
+    const char *address = NULL;
+    struct sockaddr_in endpoint;
+    if (argc > 1 && strcmp(argv[1], "--server") == 0) {
+        if (argc < 4 || tcp_address(argv[2], argv[3], &endpoint) != 0) {
+            dprintf(STDERR_FILENO, "Использование: ./sort_center --server IP PORT [параметры]\n");
+            return 1;
+        }
+        address = argv[2];
+        // Оставляем имя программы на месте argv[0] для разбора настроек модели.
+        argv[3] = argv[0];
+        argv += 3;
+        argc -= 3;
+    }
     int parsed = config_parse_args(&cfg, argc, argv);
     if (parsed) return parsed > 0 ? 0 : 1;
+    if (address) {
+        strcpy(cfg.address, address);
+        snprintf(cfg.port, sizeof(cfg.port), "%u", (unsigned)ntohs(endpoint.sin_port));
+        if (strcmp(cfg.ipc_mode, "independent") == 0) {
+            dprintf(STDERR_FILENO, "Для TCP-сервера выберите режим unnamed или named\n");
+            return 1;
+        }
+    }
     if (!cfg.session[0]) snprintf(cfg.session, sizeof(cfg.session), "run_%ld", (long)getpid());
     // Независимые участники могут запускаться из другого рабочего каталога.
     if (cfg.log_filepath[0] != '/') {

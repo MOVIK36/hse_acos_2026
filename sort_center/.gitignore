@@ -1,4 +1,6 @@
 /sort_center
+/sort_source
+/sort_observer
 /build/
 /cmake-build-*/
 /sort_center.log

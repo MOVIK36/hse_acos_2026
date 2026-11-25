@@ -7,6 +7,7 @@
 #include <string.h>
 #include <errno.h>
 #include <semaphore.h>
+#include <sys/stat.h>
 
 static sem_t *log_mutex;
 
@@ -15,15 +16,25 @@ void logger_set_semaphore(sem_t *sem) { log_mutex = sem; }
 static int g_log_fd = -1;
 static bool g_verbose_stdout = true;
 
-int logger_init(const char *log_filepath, bool verbose_stdout) {
+int logger_init(const char *log_filepath, bool verbose_stdout, bool readback) {
     g_verbose_stdout = verbose_stdout;
 
     if (log_filepath != NULL && strlen(log_filepath) > 0) {
-        g_log_fd = open(log_filepath, O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0644);
+        int flags = readback ? O_RDWR | O_NONBLOCK : O_WRONLY | O_TRUNC;
+        g_log_fd = open(log_filepath, flags | O_CREAT | O_APPEND, 0644);
         if (g_log_fd < 0) {
             dprintf(STDERR_FILENO, "[ERROR] Не удалось открыть лог-файл %s: %s\n",
                     log_filepath, strerror(errno));
             return -1;
+        }
+        if (readback) {
+            struct stat info;
+            if (fstat(g_log_fd, &info) != 0 || !S_ISREG(info.st_mode) || ftruncate(g_log_fd, 0) != 0) {
+                dprintf(STDERR_FILENO, "[ERROR] Для TCP нужен обычный файл журнала с доступом на чтение и запись: %s\n",
+                        log_filepath);
+                logger_close();
+                return -1;
+            }
         }
     }
     return 0;

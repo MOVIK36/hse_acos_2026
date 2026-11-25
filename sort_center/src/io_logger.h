@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 // Логгер с прямым выводом через дескрипторы файлов
-int logger_init(const char *log_filepath, bool verbose_stdout);
+int logger_init(const char *log_filepath, bool verbose_stdout, bool readback);
 void logger_close(void);
 int logger_attach(const char *path, bool verbose_stdout);
 void logger_set_semaphore(sem_t *sem);
